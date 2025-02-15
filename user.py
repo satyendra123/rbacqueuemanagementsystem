@@ -17,6 +17,7 @@ def store_user_with_role_permissions():
     hashed_password = hash_password(password)
 
     try:
+
         connection = mysql.connector.connect(host='localhost', user='root', password='password', database='houston_vms')
 
         if connection.is_connected():
@@ -35,7 +36,8 @@ def store_user_with_role_permissions():
             role_query = "INSERT INTO role (name) VALUES (%s)"
             cursor.execute(role_query, (role_name,))  # Add comma to make it a tuple
             role_id = cursor.lastrowid
-
+            cursor.execute(role_query, (role_name))
+            role_id = cursor.lastrowid
 
             # Define permissions with keys and names
             permissions = [
