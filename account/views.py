@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -16,29 +17,39 @@ from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from django.shortcuts import get_object_or_404
 from .middleware import admin_required, admin_permission 
 
-@api_view(['POST'])
-@permission_classes([AllowAny])
+@csrf_exempt
+@admin_required
 def register_user(request):
-    username = request.data.get('username')
-    email = request.data.get('email')
-    password = request.data.get('password')
-    name = request.data.get('name')
+    """Register a new user"""
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
 
-    if CustomUser.objects.filter(username=username).exists():
-        return Response({"detail": "Username already exists"}, status=status.HTTP_400_BAD_REQUEST)
-    if CustomUser.objects.filter(email=email).exists():
-        return Response({"detail": "Email already exists"}, status=status.HTTP_400_BAD_REQUEST)
-    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+    try:
+        body = json.loads(request.body.decode('utf-8'))
+        name = body.get('name')
+        email = body.get('email')
+        password = body.get('password')
 
-    user = CustomUser.objects.create(
-        username=username,
-        email=email,
-        name=name,
-        password=hashed_password.decode('utf-8')  # Store the hashed password
-    )
-    user.save()
+        if not all([name, email, password]):
+            return JsonResponse({"detail": "All fields are required"}, status=400)
 
-    return Response({"detail": "User registered successfully"}, status=status.HTTP_201_CREATED)
+        if CustomUser.objects.filter(email=email).exists():
+            return JsonResponse({"detail": "Email already exists"}, status=400)
+
+        # Hash password before saving
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+        user = CustomUser.objects.create(
+            name=name,
+            email=email,
+            password=hashed_password,
+            created_at=timezone.now()
+        )
+        return JsonResponse({"detail": "User registered successfully", "user_id": user.id}, status=201)
+
+    except json.JSONDecodeError:
+        return JsonResponse({"detail": "Invalid JSON format"}, status=400)
+
 
 # Login API
 @api_view(['POST'])
@@ -54,18 +65,23 @@ def login(request):
 
     # Manually checking the password with bcrypt
     if bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
-        role = Role.objects.filter(id=user.id).first()
-
-        if role:
-            refresh = RefreshToken.for_user(user)
-            refresh['role_name'] = role.name
-            return Response({
-                'access': str(refresh.access_token),
-                'refresh': str(refresh),
-                'role': role.name
-            })
+        # Fetch user role from UserRole table
+        user_role = UserRole.objects.filter(user_id=user.id).first()
+        
+        if user_role:
+            role = Role.objects.filter(id=user_role.role_id).first()
+            role_name = role.name if role else None
         else:
-            return Response({"detail": "User does not have an associated role"}, status=status.HTTP_400_BAD_REQUEST)
+            role_name = None  # No role assigned
+
+        refresh = RefreshToken.for_user(user)
+        refresh['role_name'] = role_name
+
+        return Response({
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'role': role_name
+        })
     else:
         return Response({"detail": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
