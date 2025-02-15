@@ -36,8 +36,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'account',
-    'vmsapp',
-    'doctors'
+    'vmsapp'
 ]
 
 MIDDLEWARE = [
@@ -130,7 +129,7 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),  # Set your preferred token expiration time
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),  # Set your preferred token expiration time
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'BLACKLIST_AFTER_ROTATION': True,  # Automatically blacklist the refresh token after rotation
 }
