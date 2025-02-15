@@ -1,8 +1,10 @@
 from django.urls import path
-from .views import login,logout, create_role, update_role, delete_role,create_permission, update_permission, delete_permission,assign_role_to_user,assign_permission_to_role,get_user_roles, get_user_permissions
+from .views import login, logout, register_user, create_role, update_role, delete_role, create_permission, update_permission, delete_permission, assign_role_to_user, assign_permission_to_role, get_user_roles, get_user_permissions
 from account.middleware import admin_required
+
 urlpatterns = [
     # Authentication
+    path('register/', register_user, name='register_user'),
     path('login/', login, name='login'),
     path('logout/', logout, name='logout'),
 
@@ -18,8 +20,7 @@ urlpatterns = [
 
     path('assign-role/', assign_role_to_user, name='assign_role_to_user'),
     path('assign-permission/', assign_permission_to_role, name='assign_permission_to_role'),
-    
+
     path('user-roles/<int:user_id>/', get_user_roles, name='get_user_roles'),
     path('user-permissions/<int:user_id>/', get_user_permissions, name='get_user_permissions'),
-
 ]
